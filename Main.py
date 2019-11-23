@@ -48,13 +48,13 @@ class Solution:
         return parsed_lm
 
     def filter_and(self,table,parsed_lm):
-        equal_cols=[]
+        equal_rows=[]
         for k,v,symbol in parsed_lm:
             if symbol=='=':
                 if k in self.HashTable:
-                    equal_cols.append(self.HashTable[k][v])
+                    equal_rows.append(self.HashTable[k][v])
                 elif k in self.BTreeTbale:
-                    equal_cols.append(self.BTreeTbale[k][v])
+                    equal_rows.append(self.BTreeTbale[k][v])
                 else:
                     table=[row for row in table if row[self.map_col[k]]==v]
             elif symbol=='<':
@@ -67,13 +67,30 @@ class Solution:
                 table=[row for row in table if row[self.map_col[k]]>=v]
             elif symbol=='≤':
                 table=[row for row in table if row[self.map_col[k]]<=v]
-        target_rows=set(equal_cols[0]).intersection(equal_cols[1:])
-        table=[row for row in table if row[0] in target_rows]
-        return table
+        target_rows=set(equal_rows[0]).intersection(equal_rows[1:])
+        return [r for r in table if r[0] in target_rows]
 
     def filter_or(self,table,parsed_lm):
-        pass
-
+        rows=set()
+        for k,v,symbol in parsed_lm:
+            if symbol=='=':
+                if k in self.HashTable:
+                    rows|=set(self.HashTable[k][v])
+                elif k in self.BTreeTbale:
+                    rows|=set(self.BTreeTbale[k][v])
+                else:
+                    rows|=set([row[0] for row in table if row[self.map_col[k]]==v])
+            elif symbol=='<':
+                rows|=set([row[0] for row in table if row[self.map_col[k]]<v])
+            elif symbol=='>':
+                rows|=set([row[0] for row in table if row[self.map_col[k]]>v])
+            elif symbol=='!=':
+                rows|=set([row[0] for row in table if row[self.map_col[k]]!=v])
+            elif symbol=='≥':
+                rows|=set([row[0] for row in table if row[self.map_col[k]]>=v])
+            elif symbol=='≤':
+                rows|=set([row[0] for row in table if row[self.map_col[k]]<=v])
+        return [r for r in table if r[0] in rows]
 
 
     def select(self,table,query):
