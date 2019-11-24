@@ -1,0 +1,2 @@
+R := inputfromfile(sales1)
+Q2 := select(R, qty = 5) 

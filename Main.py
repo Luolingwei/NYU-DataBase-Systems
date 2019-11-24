@@ -12,15 +12,14 @@ class Solution:
         self.map_col=defaultdict(dict)
         self.tables={}
 
-    def inputfromfile(self,tablename,filename):
+    def inputfromfile(self,filename):
         raw,currow=[],0
         f=open(filename,"r")
         for strs in f.readlines():
             strs=strs.strip('\n')
             data=strs.split('|')
-            raw.append([currow]+data)
+            raw.append([currow]+[int(d) if d.isdigit() else d for d in data])
             currow+=1
-        self.map_col[tablename]={name:i+1 for i,name in enumerate(raw[0][1:])}
         return raw
 
     def Hash(self,tablename,table,column):
@@ -43,10 +42,10 @@ class Solution:
 
     def parse(self,query):
         parsed_q=[]
-        parsed_q.append((query[0],query[2],query[1]))
+        parsed_q.append((query[0],int(query[2]) if query[2].isdigit() else query[2],query[1]))
         for i in range(3,len(query)):
             if query[i] in ('and','or'):
-                parsed_q.append((query[i+1],query[i+3],query[i+2]))
+                parsed_q.append((query[i+1],int(query[i+3]) if query[i+3].isdigit() else query[i+3],query[i+2]))
         return parsed_q
 
     def filter_and(self,tablename,table,parsed_lm):
@@ -58,12 +57,12 @@ class Solution:
                 elif k in self.BTreeTbale:
                     equal_rows.append(self.BTreeTbale[k][v])
                 else:
-                    table=[row for row in table if self.map_func[symbol](row[self.map_col[tablename][k]],v)]
+                    table=[table[0]]+[row for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)]
             else:
-                table=[row for row in table if self.map_func[symbol](row[self.map_col[tablename][k]],v)]
+                table=[table[0]]+[row for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)]
         if equal_rows:
             target_rows=set.intersection(*equal_rows)
-            return [r for r in table if r[0] in target_rows]
+            return [table[0]]+[r for r in table[1:] if r[0] in target_rows]
         else:
             return table
 
@@ -76,10 +75,10 @@ class Solution:
                 elif k in self.BTreeTbale:
                     rows|=self.BTreeTbale[k][v]
                 else:
-                    rows|=set([row[0] for row in table if self.map_func[symbol](row[self.map_col[tablename][k]],v)])
+                    rows|=set([row[0] for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)])
             else:
-                rows|=set([row[0] for row in table if self.map_func[symbol](row[self.map_col[tablename][k]],v)])
-        return [r for r in table if r[0] in rows]
+                rows|=set([row[0] for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)])
+        return [table[0]]+[r for r in table if r[0] in rows]
 
 
     def select(self,tablename,table,query):
@@ -95,14 +94,14 @@ class Solution:
                 if symbol=='=':
                     if k in self.HashTable:
                         target_rows=self.HashTable[k][v]
-                        return [row for row in table if row[0] in target_rows]
+                        return [table[0]]+[row for row in table[1:] if row[0] in target_rows]
                     elif k in self.BTreeTbale:
                         target_rows=self.BTreeTbale[k][v]
-                        return [row for row in table if row[0] in target_rows]
+                        return [table[0]]+[row for row in table[1:] if row[0] in target_rows]
                     else:
-                        return [row for row in table if self.map_func[symbol](row[self.map_col[tablename][k]],v)]
+                        return [table[0]]+[row for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)]
                 else:
-                    return [row for row in table if self.map_func[symbol](row[self.map_col[tablename][k]],v)]
+                    return [table[0]]+[row for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)]
 
 
     def project(self,table,query):
@@ -120,7 +119,7 @@ class Solution:
     def join(self,tablename1,table1,tablename2,table2,query):
         attr1,attr2,symbol=query[0].split('.')[1],query[2].split('.')[1],query[1]
         joined,row_idx=[],1
-        joined+=[table1[0]+table2[0][1:]]
+        joined+=[[table1[0][0]]+[tablename1+'_'+w for w in table1[0][1:]]+[tablename2+'_'+w for w in table2[0][1:]]]
         index1_status=self.HashTable[tablename1][attr1] or self.BTreeTbale[tablename1][attr1]
         index2_status=self.HashTable[tablename2][attr2] or self.BTreeTbale[tablename2][attr2]
         if index1_status and index2_status:
@@ -154,8 +153,11 @@ class Solution:
         return joined
 
 
-    def sort(self,table,query):
-        pass
+    def sort(self,tablename,table,query):
+        header,data=table[0],table[1:]
+        for col in query[::-1]:
+            data.sort(key=lambda x:-x[self.map_col[tablename][col]])
+        return [header]+data
 
     def movavg(self,table,query):
         pass
@@ -164,10 +166,11 @@ class Solution:
         pass
 
     def concat(self,table1,table2):
-        pass
+        return table1+table2[1:]
 
     def outputfile(self,table,filename):
         pass
+
 
     def ReadFromInput(self,testfile):
         f=open(testfile,"r")
@@ -177,9 +180,14 @@ class Solution:
             returnTable=paras[0]
             func=paras[1]
             if func=='inputfromfile':
-                self.tables[returnTable]=self.inputfromfile(returnTable,paras[2]+'.txt')
+                self.tables[returnTable]=self.inputfromfile(paras[2]+'.txt')
+                self.map_col[returnTable]={name:i+1 for i, name in enumerate(self.tables[returnTable][0][1:])}
             elif func=='select':
                 self.tables[returnTable]=self.select(paras[2],self.tables[paras[2]],paras[3:])
+                self.map_col[returnTable]={name:i+1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                # select=self.tables[returnTable]
+                # test_select=pd.DataFrame(data=select)
+                # test_select.to_csv('C:/Users/asus/Desktop/test_select.csv',index=False)
             elif func=='project':
                 self.tables[returnTable]=self.project(self.tables[paras[2]],paras[3:])
             elif func=='avg':
@@ -190,20 +198,33 @@ class Solution:
                 self.tables[returnTable]=self.avggroup(self.tables[paras[2]], paras[3:])
             elif func=='join':
                 self.tables[returnTable]=self.join(paras[2],self.tables[paras[2]],paras[3],self.tables[paras[3]],paras[4:])
+                self.map_col[returnTable]={name:i+1 for i,name in enumerate(self.tables[returnTable][0][1:])}
+                # join=self.tables[returnTable]
+                # test_join=pd.DataFrame(data=join)
+                # test_join.to_csv('C:/Users/asus/Desktop/test_join.csv',index=False)
             elif func=='sort':
-                self.tables[returnTable]=self.sort(self.tables[paras[2]], paras[3:])
+                self.tables[returnTable]=self.sort(paras[2],self.tables[paras[2]], paras[3:])
+                self.map_col[returnTable]={name:i+1 for i,name in enumerate(self.tables[returnTable][0][1:])}
+                # sort=self.tables[returnTable]
+                # test_sort=pd.DataFrame(data=sort)
+                # test_sort.to_csv('C:/Users/asus/Desktop/test_sort.csv',index=False)
             elif func=='movavg':
                 self.tables[returnTable]=self.movavg(self.tables[paras[2]], paras[3:])
             elif func=='movsum':
                 self.tables[returnTable]=self.movsum(self.tables[paras[2]], paras[3:])
             elif func=='concat':
                 self.tables[returnTable]=self.concat(self.tables[paras[2]], self.tables[paras[3]])
+                self.map_col[returnTable]={name:i+1 for i,name in enumerate(self.tables[returnTable][0][1:])}
+                # concat=self.tables[returnTable]
+                # test_concat=pd.DataFrame(data=concat)
+                # test_concat.to_csv('C:/Users/asus/Desktop/test_concat.csv',index=False)
             elif paras[0]=='outputfile':
                 self.outputfile(self.tables[paras[1]],paras[2])
             elif paras[0]=='Hash':
                 self.Hash(paras[1],self.tables[paras[1]],paras[2])
             elif paras[0]=='BTree':
                 self.BTree(paras[1],self.tables[paras[1]],paras[2])
+
 
 
 a=Solution()
