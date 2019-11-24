@@ -1,0 +1,6 @@
+R := inputfromfile(sales1)
+S := inputfromfile(sales2)
+R1 := select(R, (time>80) or (qty < 10)) 
+Hash (S, Q)
+BTree (R, qty)
+T := join(R, S, R.qty=S.Q)
