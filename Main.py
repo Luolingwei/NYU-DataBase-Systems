@@ -159,18 +159,34 @@ class Solution:
             data.sort(key=lambda x:-x[self.map_col[tablename][col]])
         return [header]+data
 
-    def movavg(self,table,query):
-        pass
+    def movavg(self,tablename,table,query):
+        col,avg_para=query[0],int(query[1])
+        output=[[0,'movavg'+'_'+query[0]+'_'+query[1]]]
+        col_num=self.map_col[tablename][col]
+        data=[row[col_num] for row in table[1:]]
+        for i in range(len(data)):
+            curdata=data[max(0,i+1-avg_para):i+1]
+            curavg=sum(curdata)/len(curdata)
+            output.append([i+1,curavg])
+        return output
 
-    def movsum(self,table,query):
-        pass
+    def movsum(self,tablename,table,query):
+        col,sum_para=query[0],int(query[1])
+        output=[[0,'movsum'+'_'+query[0]+'_'+query[1]]]
+        col_num=self.map_col[tablename][col]
+        data=[row[col_num] for row in table[1:]]
+        for i in range(len(data)):
+            output.append([i+1,sum(data[max(0,i+1-sum_para):i+1])])
+        return output
 
     def concat(self,table1,table2):
         return table1+table2[1:]
 
     def outputfile(self,table,filename):
-        pass
-
+        tablefile=open(filename+'.txt','w')
+        for row in table:
+            tablefile.write('|'.join(map(str,row[1:]))+'\n')
+        tablefile.close()
 
     def ReadFromInput(self,testfile):
         f=open(testfile,"r")
@@ -209,9 +225,17 @@ class Solution:
                 # test_sort=pd.DataFrame(data=sort)
                 # test_sort.to_csv('C:/Users/asus/Desktop/test_sort.csv',index=False)
             elif func=='movavg':
-                self.tables[returnTable]=self.movavg(self.tables[paras[2]], paras[3:])
+                self.tables[returnTable]=self.movavg(paras[2],self.tables[paras[2]], paras[3:])
+                self.map_col[returnTable]={name:i+1 for i,name in enumerate(self.tables[returnTable][0][1:])}
+                # movavg=self.tables[returnTable]
+                # test_movavg=pd.DataFrame(data=movavg)
+                # test_movavg.to_csv('C:/Users/asus/Desktop/test_movavg.csv',index=False)
             elif func=='movsum':
-                self.tables[returnTable]=self.movsum(self.tables[paras[2]], paras[3:])
+                self.tables[returnTable]=self.movsum(paras[2],self.tables[paras[2]], paras[3:])
+                self.map_col[returnTable]={name:i+1 for i,name in enumerate(self.tables[returnTable][0][1:])}
+                # movsum=self.tables[returnTable]
+                # test_movsum=pd.DataFrame(data=movsum)
+                # test_movsum.to_csv('C:/Users/asus/Desktop/test_movsum.csv',index=False)
             elif func=='concat':
                 self.tables[returnTable]=self.concat(self.tables[paras[2]], self.tables[paras[3]])
                 self.map_col[returnTable]={name:i+1 for i,name in enumerate(self.tables[returnTable][0][1:])}
