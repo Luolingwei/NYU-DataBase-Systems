@@ -1,8 +1,7 @@
-import collections
 from collections import defaultdict
 import re
 from BTrees.OOBTree import OOBTree
-import pandas as pd
+import numpy as np
 
 class Solution:
     def __init__(self):
@@ -80,7 +79,6 @@ class Solution:
                 rows|=set([row[0] for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)])
         return [table[0]]+[r for r in table if r[0] in rows]
 
-
     def select(self,tablename,table,query):
         if 'and' in query:
             parsed_lm=self.parse(query)
@@ -103,8 +101,7 @@ class Solution:
                 else:
                     return [table[0]]+[row for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)]
 
-
-    def project(self,table_name, table,query):
+    def project(self,table_name,table,query):
         projected = []
         projected.append([row[0] for row in table])
         for s in query:
@@ -112,53 +109,42 @@ class Solution:
         projected = [[row[col] for row in projected] for col in range(len(projected[0]))]
         return projected
 
-
     def avg(self,table_name,table,query):
-        res = []
-        sum,count = 0,0
-        for num in self.project(table_name,table,query)[1:]:
-            sum += int(num[0])
-            count += 1
-        res.append(["AVG_"+query[0]])
-        res.append([sum/count])
+        res=[[0,"AVG_"+query[0]]]
+        data=[row[self.map_col[table_name][query[0]]] for row in table[1:]]
+        res.append([1,sum(data)/len(data)])
         return res
 
-
     def sumgroup(self,table_name,table,query):
-        first = query[0]
-        keys = []
+        first=query[0]
+        keys=[]
         #find all the key combinations
-        for row in range(1, len(table)):
-            comb = []
+        for row in range(1,len(table)):
+            comb=[]
             for var in query[1:]:
                 comb.append(table[row][self.map_col[table_name][var]])
             keys.append(comb)
-        keys = np.array(list(set([tuple(t) for t in keys])))
-        dict = {}
+        keys=np.array(list(set([tuple(t) for t in keys])))
+        dict={}
         for i in range(len(keys)):
-            dict[tuple(keys[i])] = 0
+            dict[tuple(keys[i])]=0
         for row in range(1, len(table)):
-            k = []
+            k=[]
             for var in query[1:]:
                 k.append(table[row][self.map_col[table_name][var]])
             key = tuple(k)
             if key in dict:
-                dict[key] += int(table[row][self.map_col[table_name][first]])
-        table = []
-        header = []
-        for item in query[1:]:
-            header.append(item)
-        header.append(first)
-        table.append(header)
+                dict[key]+=table[row][self.map_col[table_name][first]]
+        header=[[0]+query[1:]+['sum_'+first]]
+        table,row_idx=header,1
         for key in dict:
-            row = []
+            row=[]
             for k in key:
                 row.append(k)
             row.append(dict.get(key))
-            table.append(row)
+            table.append([row_idx]+row)
+            row_idx+=1
         return table
-
-
 
     def avggroup(self,table_name,table,query):
         first = query[0]
@@ -183,19 +169,15 @@ class Solution:
             if key in dict:
                 count[key] += 1
                 dict[key] += int(table[row][self.map_col[table_name][first]])
-        table = []
-        header = []
-        for item in query[1:]:
-            header.append(item)
-        header.append(first)
-        table.append(header)
+        header = [[0] + query[1:] + ['avg_' + first]]
+        table, row_idx = header, 1
         for key in dict:
             row = []
             for k in key:
                 row.append(k)
             row.append(dict.get(key)/count.get(key))
-            table.append(row)
-
+            table.append([row_idx]+row)
+            row_idx+=1
         return table
 
     def join(self,tablename1,table1,tablename2,table2,query):
@@ -233,7 +215,6 @@ class Solution:
                         joined.append([row_idx]+row1[1:]+row2[1:])
                         row_idx+=1
         return joined
-
 
     def sort(self,tablename,table,query):
         header,data=table[0],table[1:]
@@ -287,13 +268,29 @@ class Solution:
                 # test_select=pd.DataFrame(data=select)
                 # test_select.to_csv('C:/Users/asus/Desktop/test_select.csv',index=False)
             elif func=='project':
-                self.tables[returnTable]=self.project(self.tables[paras[2]],paras[3:])
+                self.tables[returnTable]=self.project(paras[2],self.tables[paras[2]],paras[3:])
+                self.map_col[returnTable]={name:i+1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                # project=self.tables[returnTable]
+                # test_select=pd.DataFrame(data=project)
+                # test_select.to_csv('C:/Users/asus/Desktop/test_project.csv',index=False)
             elif func=='avg':
-                self.tables[returnTable]=self.avg(self.tables[paras[2]],paras[3:])
+                self.tables[returnTable]=self.avg(paras[2],self.tables[paras[2]],paras[3:])
+                self.map_col[returnTable]={name:i+1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                # avg=self.tables[returnTable]
+                # test_avg=pd.DataFrame(data=avg)
+                # test_avg.to_csv('C:/Users/asus/Desktop/test_avg.csv',index=False)
             elif func=='sumgroup':
-                self.tables[returnTable]=self.sumgroup(self.tables[paras[2]],paras[3:])
+                self.tables[returnTable]=self.sumgroup(paras[2],self.tables[paras[2]],paras[3:])
+                self.map_col[returnTable]={name:i+1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                # sumgroup=self.tables[returnTable]
+                # test_sumgroup=pd.DataFrame(data=sumgroup)
+                # test_sumgroup.to_csv('C:/Users/asus/Desktop/test_sumgroup.csv',index=False)
             elif func=='avggroup':
-                self.tables[returnTable]=self.avggroup(self.tables[paras[2]], paras[3:])
+                self.tables[returnTable]=self.avggroup(paras[2],self.tables[paras[2]], paras[3:])
+                self.map_col[returnTable]={name:i+1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                # avggroup=self.tables[returnTable]
+                # test_avggroup=pd.DataFrame(data=avggroup)
+                # test_avggroup.to_csv('C:/Users/asus/Desktop/test_avggroup.csv',index=False)
             elif func=='join':
                 self.tables[returnTable]=self.join(paras[2],self.tables[paras[2]],paras[3],self.tables[paras[3]],paras[4:])
                 self.map_col[returnTable]={name:i+1 for i,name in enumerate(self.tables[returnTable][0][1:])}
@@ -332,19 +329,5 @@ class Solution:
                 self.BTree(paras[1],self.tables[paras[1]],paras[2])
 
 
-
 a=Solution()
 a.ReadFromInput('test.txt')
-
-# raw=a.inputfromfile('sales1.txt')
-# test1_data=a.select(raw,"(   time > 50  ) and ( qty<30)")
-# test1=pd.DataFrame(data=test1_data)
-# test1.to_csv('C:/Users/asus/Desktop/test1.csv',index=False)
-#
-# test2_data=a.select(raw,"(   time > 80  ) or  (qty < 10)")
-# test2=pd.DataFrame(data=test2_data)
-# test2.to_csv('C:/Users/asus/Desktop/test2.csv',index=False)
-#
-# test3_data=a.select(raw,"(   time > 80  )")
-# test3=pd.DataFrame(data=test3_data)
-# test3.to_csv('C:/Users/asus/Desktop/test3.csv',index=False)
