@@ -104,17 +104,99 @@ class Solution:
                     return [table[0]]+[row for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)]
 
 
-    def project(self,table,query):
-        pass
+    def project(self,table_name, table,query):
+        projected = []
+        projected.append([row[0] for row in table])
+        for s in query:
+            projected.append([row[self.map_col[table_name][s]] for row in table])
+        projected = [[row[col] for row in projected] for col in range(len(projected[0]))]
+        return projected
 
-    def avg(self,table,query):
-        pass
 
-    def sumgroup(self,table,query):
-        pass
+    def avg(self,table_name,table,query):
+        res = []
+        sum,count = 0,0
+        for num in self.project(table_name,table,query)[1:]:
+            sum += int(num[0])
+            count += 1
+        res.append(["AVG_"+query[0]])
+        res.append([sum/count])
+        return res
 
-    def avggroup(self,table,query):
-        pass
+
+    def sumgroup(self,table_name,table,query):
+        first = query[0]
+        keys = []
+        #find all the key combinations
+        for row in range(1, len(table)):
+            comb = []
+            for var in query[1:]:
+                comb.append(table[row][self.map_col[table_name][var]])
+            keys.append(comb)
+        keys = np.array(list(set([tuple(t) for t in keys])))
+        dict = {}
+        for i in range(len(keys)):
+            dict[tuple(keys[i])] = 0
+        for row in range(1, len(table)):
+            k = []
+            for var in query[1:]:
+                k.append(table[row][self.map_col[table_name][var]])
+            key = tuple(k)
+            if key in dict:
+                dict[key] += int(table[row][self.map_col[table_name][first]])
+        table = []
+        header = []
+        for item in query[1:]:
+            header.append(item)
+        header.append(first)
+        table.append(header)
+        for key in dict:
+            row = []
+            for k in key:
+                row.append(k)
+            row.append(dict.get(key))
+            table.append(row)
+        return table
+
+
+
+    def avggroup(self,table_name,table,query):
+        first = query[0]
+        keys = []
+        # find all the key combinations
+        for row in range(1, len(table)):
+            comb = []
+            for var in query[1:]:
+                comb.append(table[row][self.map_col[table_name][var]])
+            keys.append(comb)
+        keys = np.array(list(set([tuple(t) for t in keys])))
+        dict = {}
+        count = {}
+        for i in range(len(keys)):
+            dict[tuple(keys[i])] = 0
+            count[tuple(keys[i])] = 0
+        for row in range(1, len(table)):
+            k = []
+            for var in query[1:]:
+                k.append(table[row][self.map_col[table_name][var]])
+            key = tuple(k)
+            if key in dict:
+                count[key] += 1
+                dict[key] += int(table[row][self.map_col[table_name][first]])
+        table = []
+        header = []
+        for item in query[1:]:
+            header.append(item)
+        header.append(first)
+        table.append(header)
+        for key in dict:
+            row = []
+            for k in key:
+                row.append(k)
+            row.append(dict.get(key)/count.get(key))
+            table.append(row)
+
+        return table
 
     def join(self,tablename1,table1,tablename2,table2,query):
         attr1,attr2,symbol=query[0].split('.')[1],query[2].split('.')[1],query[1]
