@@ -18,7 +18,7 @@ class Solution:
         for strs in f.readlines():
             strs=strs.strip('\n')
             data=strs.split('|')
-            raw.append([currow]+[int(d) if d.isdigit() else d for d in data])
+            raw.append([currow]+[float(d) if d.isdigit() else d for d in data])
             currow+=1
         return raw
 
@@ -170,7 +170,7 @@ class Solution:
             if key in dict:
                 count[key] += 1
                 dict[key] += int(table[row][self.map_col[table_name][first]])
-        header = [[0] + query[1:] + ['avg_' + first]]
+        header=[[0]+query[1:]+['avg_'+first]]
         table, row_idx = header, 1
         for key in dict:
             row = []
@@ -327,9 +327,9 @@ class Solution:
             elif func=='join':
                 self.tables[returnTable]=self.join(paras[2],self.tables[paras[2]],paras[3],self.tables[paras[3]],paras[4:])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
-                join=self.tables[returnTable]
-                test_join=pd.DataFrame(data=join)
-                test_join.to_csv('C:/Users/asus/Desktop/test_join.csv',index=False)
+                # join=self.tables[returnTable]
+                # test_join=pd.DataFrame(data=join)
+                # test_join.to_csv('C:/Users/asus/Desktop/test_join.csv',index=False)
             elif func=='sort':
                 self.tables[returnTable]=self.sort(paras[2],self.tables[paras[2]], paras[3:])
                 self.map_col[returnTable]={name:i+1 for i,name in enumerate(self.tables[returnTable][0][1:])}
