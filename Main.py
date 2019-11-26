@@ -2,6 +2,7 @@ from collections import defaultdict
 import re
 from BTrees.OOBTree import OOBTree
 import numpy as np
+import pandas as pd
 
 class Solution:
     def __init__(self):
@@ -39,7 +40,7 @@ class Solution:
                 curBTree[d]={data[0]}
         self.BTreeTbale[tablename][column]=curBTree
 
-    def parse(self,query):
+    def parse_select(self,query):
         parsed_q=[]
         parsed_q.append((query[0],int(query[2]) if query[2].isdigit() else query[2],query[1]))
         for i in range(3,len(query)):
@@ -81,13 +82,13 @@ class Solution:
 
     def select(self,tablename,table,query):
         if 'and' in query:
-            parsed_lm=self.parse(query)
+            parsed_lm=self.parse_select(query)
             return self.filter_and(tablename,table,parsed_lm)
         elif 'or' in query:
-            parsed_lm=self.parse(query)
+            parsed_lm=self.parse_select(query)
             return self.filter_or(tablename,table,parsed_lm)
         else:
-            parsed_lm=self.parse(query)
+            parsed_lm=self.parse_select(query)
             for k,v,symbol in parsed_lm:
                 if symbol=='=':
                     if k in self.HashTable:
@@ -180,8 +181,32 @@ class Solution:
             row_idx+=1
         return table
 
+    def parse_join(self,tablename1,tablename2,query):
+        def parse_helper(attr1,symbol,attr2):
+            if attr1.split('.')[0]==tablename1:
+                return (attr1.split('.')[1],attr2.split('.')[1],symbol)
+            else:
+                if symbol=='≥':
+                    return (attr2.split('.')[1],attr1.split('.')[1],'≤')
+                elif symbol=='≤':
+                    return (attr2.split('.')[1],attr1.split('.')[1],'≥')
+                elif symbol=='>':
+                    return (attr2.split('.')[1],attr1.split('.')[1],'<')
+                elif symbol=='<':
+                    return (attr2.split('.')[1],attr1.split('.')[1],'>')
+                else:
+                    return (attr2.split('.')[1], attr1.split('.')[1], symbol)
+        parsed_q=[]
+        parsed_q.append(parse_helper(query[0],query[1],query[2]))
+        if 'and' in query:
+            for i in range(3,len(query)):
+                if query[i]=='and':
+                    parsed_q.append(parse_helper(query[i+1],query[i+2],query[i+3]))
+        return parsed_q
+
     def join(self,tablename1,table1,tablename2,table2,query):
-        attr1,attr2,symbol=query[0].split('.')[1],query[2].split('.')[1],query[1]
+        parsed_q=self.parse_join(tablename1,tablename2,query)
+        attr1,attr2,symbol=parsed_q[0][0],parsed_q[0][1],parsed_q[0][2]
         joined,row_idx=[],1
         joined+=[[table1[0][0]]+[tablename1+'_'+w for w in table1[0][1:]]+[tablename2+'_'+w for w in table2[0][1:]]]
         index1_status=self.HashTable[tablename1][attr1] or self.BTreeTbale[tablename1][attr1]
@@ -214,6 +239,14 @@ class Solution:
                     if self.map_func[symbol](row1[self.map_col[tablename1][attr1]],row2[self.map_col[tablename2][attr2]]):
                         joined.append([row_idx]+row1[1:]+row2[1:])
                         row_idx+=1
+        temp={name:i+1 for i, name in enumerate(joined[0][1:])}
+        for attr1,attr2,symbol in parsed_q[1:]:
+            new_joined=[joined[0]]
+            attr1,attr2=tablename1+'_'+attr1,tablename2+'_'+attr2
+            for data in joined[1:]:
+                if self.map_func[symbol](data[temp[attr1]],data[temp[attr2]]):
+                    new_joined.append(data)
+            joined=new_joined
         return joined
 
     def sort(self,tablename,table,query):
@@ -293,10 +326,10 @@ class Solution:
                 # test_avggroup.to_csv('C:/Users/asus/Desktop/test_avggroup.csv',index=False)
             elif func=='join':
                 self.tables[returnTable]=self.join(paras[2],self.tables[paras[2]],paras[3],self.tables[paras[3]],paras[4:])
-                self.map_col[returnTable]={name:i+1 for i,name in enumerate(self.tables[returnTable][0][1:])}
-                # join=self.tables[returnTable]
-                # test_join=pd.DataFrame(data=join)
-                # test_join.to_csv('C:/Users/asus/Desktop/test_join.csv',index=False)
+                self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                join=self.tables[returnTable]
+                test_join=pd.DataFrame(data=join)
+                test_join.to_csv('C:/Users/asus/Desktop/test_join.csv',index=False)
             elif func=='sort':
                 self.tables[returnTable]=self.sort(paras[2],self.tables[paras[2]], paras[3:])
                 self.map_col[returnTable]={name:i+1 for i,name in enumerate(self.tables[returnTable][0][1:])}
