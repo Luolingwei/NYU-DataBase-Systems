@@ -198,11 +198,17 @@ class Solution:
                 else:
                     return (attr2.split('.')[1], attr1.split('.')[1], symbol)
         parsed_q=[]
-        parsed_q.append(parse_helper(query[0],query[1],query[2]))
-        if 'and' in query:
-            for i in range(3,len(query)):
-                if query[i]=='and':
-                    parsed_q.append(parse_helper(query[i+1],query[i+2],query[i+3]))
+        pairs,idx,symbol=["",""],0,None
+        for c in query:
+            if c in self.map_func.keys():
+                symbol=c
+                idx+=1
+            elif c=='and':
+                parsed_q.append(parse_helper(pairs[0],symbol,pairs[1]))
+                pairs,idx,symbol=["", ""],0,None
+            else:
+                pairs[idx]+=c
+        parsed_q.append(parse_helper(pairs[0],symbol,pairs[1]))
         return parsed_q
 
     def parse_join2(self,expr):
@@ -343,9 +349,9 @@ class Solution:
             elif func=='join':
                 self.tables[returnTable]=self.join(paras[2],self.tables[paras[2]],paras[3],self.tables[paras[3]],paras[4:])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
-                join=self.tables[returnTable]
-                test_join=pd.DataFrame(data=join)
-                test_join.to_csv('C:/Users/asus/Desktop/test_join.csv',index=False)
+                # join=self.tables[returnTable]
+                # test_join=pd.DataFrame(data=join)
+                # test_join.to_csv('C:/Users/asus/Desktop/test_join.csv',index=False)
             elif func=='sort':
                 self.tables[returnTable]=self.sort(paras[2],self.tables[paras[2]], paras[3:])
                 self.map_col[returnTable]={name:i+1 for i,name in enumerate(self.tables[returnTable][0][1:])}
