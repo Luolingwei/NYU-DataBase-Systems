@@ -9,7 +9,7 @@ class Solution:
     def __init__(self):
         self.HashTable=defaultdict(lambda:defaultdict(lambda:defaultdict(set)))
         self.BTreeTbale=defaultdict(lambda:defaultdict(lambda:OOBTree()))
-        self.map_func={'=':lambda x,y:x==y,'<':lambda x,y:x<y,'>':lambda x,y:x>y,'!=':lambda x,y:x!=y,'≥':lambda x,y:x>=y,'≤':lambda x,y:x<=y}
+        self.map_func={'=':lambda x,y:x==y,'<':lambda x,y:x<y,'>':lambda x,y:x>y,'!=':lambda x,y:x!=y,'>=':lambda x,y:x>=y,'<=':lambda x,y:x<=y}
         self.map_col=defaultdict(dict)
         self.tables={}
 
@@ -187,10 +187,10 @@ class Solution:
             if attr1.split('.')[0]==tablename1:
                 return (attr1.split('.')[1],attr2.split('.')[1],symbol)
             else:
-                if symbol=='≥':
-                    return (attr2.split('.')[1],attr1.split('.')[1],'≤')
-                elif symbol=='≤':
-                    return (attr2.split('.')[1],attr1.split('.')[1],'≥')
+                if symbol=='>=':
+                    return (attr2.split('.')[1],attr1.split('.')[1],'<=')
+                elif symbol=='<=':
+                    return (attr2.split('.')[1],attr1.split('.')[1],'>=')
                 elif symbol=='>':
                     return (attr2.split('.')[1],attr1.split('.')[1],'<')
                 elif symbol=='<':
@@ -308,7 +308,7 @@ class Solution:
         f=open(testfile,"r")
         for strs in f.readlines():
             strs=strs.strip('\n')
-            paras=list(filter(None,re.split(":=|\)|\(|\\s+|,|(=)|(>)|(<)|(!=)|(≥)|(≤)",strs)))
+            paras=list(filter(None,re.split(":=|\)|\(|\\s+|,|(=)|(>)|(<)|(!=)|(>=)|(<=)",strs)))
             returnTable=paras[0]
             func=paras[1]
             start=time.perf_counter()
