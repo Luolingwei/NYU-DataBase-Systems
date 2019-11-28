@@ -3,6 +3,7 @@ import re
 from BTrees.OOBTree import OOBTree
 import numpy as np
 import pandas as pd
+import time
 
 class Solution:
     def __init__(self):
@@ -204,9 +205,20 @@ class Solution:
                     parsed_q.append(parse_helper(query[i+1],query[i+2],query[i+3]))
         return parsed_q
 
+    def parse_join2(self,expr):
+        expr_parse=list(filter(None, re.split("(\+)|(-)|(\*)|(/)", expr)))
+        if len(expr_parse)>1:
+            attr,symbol,num=expr_parse[0],expr_parse[1],int(expr_parse[2])
+        else:
+            attr,symbol,num=expr_parse[0],'$',0
+        return attr,symbol,num
+
     def join(self,tablename1,table1,tablename2,table2,query):
+        map_ops={'$': lambda x,y: x,'+': lambda x,y:x+y,'-':lambda x,y:x-y,'*':lambda x,y:x*y,'/':lambda x,y:x/y}
         parsed_q=self.parse_join(tablename1,tablename2,query)
-        attr1,attr2,symbol=parsed_q[0][0],parsed_q[0][1],parsed_q[0][2]
+        expr1,expr2,symbol=parsed_q[0][0],parsed_q[0][1],parsed_q[0][2]
+        attr1,inner_symbol1,num1=self.parse_join2(expr1)
+        attr2,inner_symbol2,num2=self.parse_join2(expr2)
         joined,row_idx=[],1
         joined+=[[table1[0][0]]+[tablename1+'_'+w for w in table1[0][1:]]+[tablename2+'_'+w for w in table2[0][1:]]]
         index1_status=self.HashTable[tablename1][attr1] or self.BTreeTbale[tablename1][attr1]
@@ -214,7 +226,7 @@ class Solution:
         if index1_status and index2_status:
             for key1 in index1_status.keys():
                 for key2 in index2_status.keys():
-                    if self.map_func[symbol](key1,key2):
+                    if self.map_func[symbol](map_ops[inner_symbol1](key1,num1),map_ops[inner_symbol2](key2,num2)):
                         for idx1 in index1_status[key1]:
                             for idx2 in index2_status[key2]:
                                 joined.append([row_idx]+table1[idx1][1:]+table2[idx2][1:])
@@ -222,29 +234,31 @@ class Solution:
         elif index1_status and not index2_status:
             for key1 in index1_status.keys():
                 for row2 in table2[1:]:
-                    if self.map_func[symbol](key1,row2[self.map_col[tablename2][attr2]]):
+                    if self.map_func[symbol](map_ops[inner_symbol1](key1,num1),map_ops[inner_symbol2](row2[self.map_col[tablename2][attr2]],num2)):
                         for idx1 in index1_status[key1]:
                             joined.append([row_idx]+table1[idx1][1:]+row2[1:])
                             row_idx+=1
         elif not index1_status and index2_status:
             for key2 in index2_status.keys():
                 for row1 in table1[1:]:
-                    if self.map_func[symbol](row1[self.map_col[tablename1][attr1]],key2):
+                    if self.map_func[symbol](map_ops[inner_symbol1](row1[self.map_col[tablename1][attr1]],num1),map_ops[inner_symbol2](key2,num2)):
                         for idx2 in index2_status[key2]:
                             joined.append([row_idx]+row1[1:]+table2[idx2][1:])
                             row_idx+=1
         else:
             for row1 in table1[1:]:
                 for row2 in table2[1:]:
-                    if self.map_func[symbol](row1[self.map_col[tablename1][attr1]],row2[self.map_col[tablename2][attr2]]):
+                    if self.map_func[symbol](map_ops[inner_symbol1](row1[self.map_col[tablename1][attr1]],num1),map_ops[inner_symbol2](row2[self.map_col[tablename2][attr2]],num2)):
                         joined.append([row_idx]+row1[1:]+row2[1:])
                         row_idx+=1
         temp={name:i+1 for i, name in enumerate(joined[0][1:])}
-        for attr1,attr2,symbol in parsed_q[1:]:
+        for expr1,expr2,symbol in parsed_q[1:]:
             new_joined=[joined[0]]
+            attr1,inner_symbol1,num1 = self.parse_join2(expr1)
+            attr2,inner_symbol2,num2 = self.parse_join2(expr2)
             attr1,attr2=tablename1+'_'+attr1,tablename2+'_'+attr2
             for data in joined[1:]:
-                if self.map_func[symbol](data[temp[attr1]],data[temp[attr2]]):
+                if self.map_func[symbol](map_ops[inner_symbol1](data[temp[attr1]],num1),map_ops[inner_symbol2](data[temp[attr2]],num2)):
                     new_joined.append(data)
             joined=new_joined
         return joined
@@ -291,6 +305,8 @@ class Solution:
             paras=list(filter(None,re.split(":=|\)|\(|\\s+|,|(=)|(>)|(<)|(!=)|(≥)|(≤)",strs)))
             returnTable=paras[0]
             func=paras[1]
+            start=time.perf_counter()
+            oper=func
             if func=='inputfromfile':
                 self.tables[returnTable]=self.inputfromfile(paras[2]+'.txt')
                 self.map_col[returnTable]={name:i+1 for i, name in enumerate(self.tables[returnTable][0][1:])}
@@ -327,9 +343,9 @@ class Solution:
             elif func=='join':
                 self.tables[returnTable]=self.join(paras[2],self.tables[paras[2]],paras[3],self.tables[paras[3]],paras[4:])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
-                # join=self.tables[returnTable]
-                # test_join=pd.DataFrame(data=join)
-                # test_join.to_csv('C:/Users/asus/Desktop/test_join.csv',index=False)
+                join=self.tables[returnTable]
+                test_join=pd.DataFrame(data=join)
+                test_join.to_csv('C:/Users/asus/Desktop/test_join.csv',index=False)
             elif func=='sort':
                 self.tables[returnTable]=self.sort(paras[2],self.tables[paras[2]], paras[3:])
                 self.map_col[returnTable]={name:i+1 for i,name in enumerate(self.tables[returnTable][0][1:])}
@@ -355,11 +371,16 @@ class Solution:
                 # test_concat=pd.DataFrame(data=concat)
                 # test_concat.to_csv('C:/Users/asus/Desktop/test_concat.csv',index=False)
             elif paras[0]=='outputfile':
+                oper = paras[0]
                 self.outputfile(self.tables[paras[1]],paras[2])
             elif paras[0]=='Hash':
+                oper = paras[0]
                 self.Hash(paras[1],self.tables[paras[1]],paras[2])
             elif paras[0]=='BTree':
+                oper = paras[0]
                 self.BTree(paras[1],self.tables[paras[1]],paras[2])
+            end=time.perf_counter()
+            print('Running time of %s: %f ms' % (oper, round((end - start)*1000,3)))
 
 
 a=Solution()
