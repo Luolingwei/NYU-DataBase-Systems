@@ -364,9 +364,9 @@ class Solution:
             elif func=='select':
                 self.tables[returnTable]=self.select(paras[2],self.tables[paras[2]],paras[3:])
                 self.map_col[returnTable]={name:i+1 for i, name in enumerate(self.tables[returnTable][0][1:])}
-                select=self.tables[returnTable]
-                test_select=pd.DataFrame(data=select)
-                test_select.to_csv('C:/Users/asus/Desktop/test_select.csv',index=False)
+                # select=self.tables[returnTable]
+                # test_select=pd.DataFrame(data=select)
+                # test_select.to_csv('C:/Users/asus/Desktop/test_select.csv',index=False)
             elif func=='project':
                 self.tables[returnTable]=self.project(paras[2],self.tables[paras[2]],paras[3:])
                 self.map_col[returnTable]={name:i+1 for i, name in enumerate(self.tables[returnTable][0][1:])}
