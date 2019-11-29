@@ -10,6 +10,7 @@ class Solution:
         self.HashTable=defaultdict(lambda:defaultdict(lambda:defaultdict(set)))
         self.BTreeTbale=defaultdict(lambda:defaultdict(lambda:OOBTree()))
         self.map_func={'=':lambda x,y:x==y,'<':lambda x,y:x<y,'>':lambda x,y:x>y,'!=':lambda x,y:x!=y,'>=':lambda x,y:x>=y,'<=':lambda x,y:x<=y}
+        self.map_ops={'$': lambda x,y: x,'+': lambda x,y:x+y,'-':lambda x,y:x-y,'*':lambda x,y:x*y,'/':lambda x,y:x/y}
         self.map_col=defaultdict(dict)
         self.tables={}
 
@@ -43,24 +44,59 @@ class Solution:
 
     def parse_select(self,query):
         parsed_q=[]
-        parsed_q.append((query[0],int(query[2]) if query[2].isdigit() else query[2],query[1]))
-        for i in range(3,len(query)):
-            if query[i] in ('and','or'):
-                parsed_q.append((query[i+1],int(query[i+3]) if query[i+3].isdigit() else query[i+3],query[i+2]))
+        pairs,idx,symbol=["",""],0,None
+        for c in query:
+            if c in self.map_func.keys():
+                symbol=c
+                idx+=1
+            elif c in ('and','or'):
+                parsed_q.append((pairs[0],pairs[1],symbol))
+                pairs,idx,symbol=["", ""],0,None
+            else:
+                pairs[idx]+=c
+        parsed_q.append((pairs[0],pairs[1],symbol))
         return parsed_q
+
+    def parse_select2(self,expr):
+        expr_parse = list(filter(None, re.split("(\+)|(-)|(\*)|(/)", expr)))
+        if len(expr_parse) > 1:
+            attr,symbol,num = expr_parse[0], expr_parse[1], float(expr_parse[2])
+        else:
+            attr,symbol,num = float(expr_parse[0]) if expr_parse[0].isdigit() else expr_parse[0], '$', 0
+        return attr,symbol,num
 
     def filter_and(self,tablename,table,parsed_lm):
         equal_rows=[]
         for k,v,symbol in parsed_lm:
+            parsed_k,symbol_k,num_k=self.parse_select2(k)
+            parsed_v,symbol_v,num_v=self.parse_select2(v)
             if symbol=='=':
-                if k in self.HashTable:
-                    equal_rows.append(self.HashTable[k][v])
-                elif k in self.BTreeTbale:
-                    equal_rows.append(self.BTreeTbale[k][v])
+                if parsed_k in self.HashTable[tablename]:
+                    for value in self.HashTable[tablename][parsed_k]:
+                        if self.map_func[symbol](self.map_ops[symbol_k](value,num_k),parsed_v):
+                            equal_rows.append(self.HashTable[parsed_k][tablename][value])
+                elif parsed_k in self.BTreeTbale[tablename]:
+                    for value in self.BTreeTbale[tablename][parsed_k]:
+                        if self.map_func[symbol](self.map_ops[symbol_k](value,num_k),parsed_v):
+                            equal_rows.append(self.BTreeTbale[parsed_k][tablename][value])
+                elif parsed_v in self.HashTable[tablename]:
+                    for value in self.HashTable[tablename][parsed_v]:
+                        if self.map_func[symbol](parsed_k,self.map_ops[symbol_v](value,num_v)):
+                            equal_rows.append(self.HashTable[parsed_v][tablename][value])
+                elif parsed_v in self.BTreeTbale[tablename]:
+                    for value in self.BTreeTbale[parsed_v][tablename]:
+                        if self.map_func[symbol](parsed_k,self.map_ops[symbol_v](value,num_v)):
+                            equal_rows.append(self.BTreeTbale[parsed_v][tablename][value])
                 else:
-                    table=[table[0]]+[row for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)]
+                    if isinstance(parsed_v,float):
+                        table=[table[0]]+[row for row in table[1:] if self.map_func[symbol](self.map_ops[symbol_k](row[self.map_col[tablename][parsed_k]],num_k),parsed_v)]
+                    else:
+                        table=[table[0]]+[row for row in table[1:] if self.map_func[symbol](parsed_k,self.map_ops[symbol_v](row[self.map_col[tablename][parsed_v]],num_v))]
             else:
-                table=[table[0]]+[row for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)]
+                if isinstance(parsed_v,float):
+                    table=[table[0]]+[row for row in table[1:] if self.map_func[symbol](self.map_ops[symbol_k](row[self.map_col[tablename][parsed_k]], num_k), parsed_v)]
+                else:
+                    table=[table[0]]+[row for row in table[1:] if self.map_func[symbol](parsed_k,self.map_ops[symbol_v](row[self.map_col[tablename][parsed_v]],num_v))]
         if equal_rows:
             target_rows=set.intersection(*equal_rows)
             return [table[0]]+[r for r in table[1:] if r[0] in target_rows]
@@ -70,38 +106,44 @@ class Solution:
     def filter_or(self,tablename,table,parsed_lm):
         rows=set()
         for k,v,symbol in parsed_lm:
+            parsed_k,symbol_k,num_k=self.parse_select2(k)
+            parsed_v,symbol_v,num_v=self.parse_select2(v)
             if symbol=='=':
-                if k in self.HashTable:
-                    rows|=self.HashTable[k][v]
-                elif k in self.BTreeTbale:
-                    rows|=self.BTreeTbale[k][v]
+                if parsed_k in self.HashTable[tablename]:
+                    for value in self.HashTable[tablename][parsed_k]:
+                        if self.map_func[symbol](self.map_ops[symbol_k](value,num_k),parsed_v):
+                            rows|=self.HashTable[parsed_k][tablename][value]
+                elif parsed_k in self.BTreeTbale[tablename]:
+                    for value in self.BTreeTbale[tablename][parsed_k]:
+                        if self.map_func[symbol](self.map_ops[symbol_k](value,num_k),parsed_v):
+                            rows|=self.BTreeTbale[parsed_k][tablename][value]
+                elif parsed_v in self.HashTable[tablename]:
+                    for value in self.HashTable[tablename][parsed_v]:
+                        if self.map_func[symbol](parsed_k,self.map_ops[symbol_v](value,num_v)):
+                            rows|self.HashTable[parsed_v][tablename][value]
+                elif parsed_v in self.BTreeTbale[tablename]:
+                    for value in self.BTreeTbale[parsed_v][tablename]:
+                        if self.map_func[symbol](parsed_k,self.map_ops[symbol_v](value,num_v)):
+                            rows|=self.BTreeTbale[parsed_v][tablename][value]
                 else:
-                    rows|=set([row[0] for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)])
+                    if isinstance(parsed_v, float):
+                        rows|=set([row[0] for row in table[1:] if self.map_func[symbol](self.map_ops[symbol_k](row[self.map_col[tablename][parsed_k]], num_k), parsed_v)])
+                    else:
+                        rows|=set([row[0] for row in table[1:] if self.map_func[symbol](parsed_k,self.map_ops[symbol_v](row[self.map_col[tablename][parsed_v]],num_v))])
             else:
-                rows|=set([row[0] for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)])
+                if isinstance(parsed_v, float):
+                    rows|=set([row[0] for row in table[1:] if self.map_func[symbol](self.map_ops[symbol_k](row[self.map_col[tablename][parsed_k]], num_k), parsed_v)])
+                else:
+                    rows|=set([row[0] for row in table[1:] if self.map_func[symbol](parsed_k, self.map_ops[symbol_v](row[self.map_col[tablename][parsed_v]], num_v))])
         return [table[0]]+[r for r in table if r[0] in rows]
 
     def select(self,tablename,table,query):
         if 'and' in query:
             parsed_lm=self.parse_select(query)
             return self.filter_and(tablename,table,parsed_lm)
-        elif 'or' in query:
-            parsed_lm=self.parse_select(query)
-            return self.filter_or(tablename,table,parsed_lm)
         else:
             parsed_lm=self.parse_select(query)
-            for k,v,symbol in parsed_lm:
-                if symbol=='=':
-                    if k in self.HashTable:
-                        target_rows=self.HashTable[k][v]
-                        return [table[0]]+[row for row in table[1:] if row[0] in target_rows]
-                    elif k in self.BTreeTbale:
-                        target_rows=self.BTreeTbale[k][v]
-                        return [table[0]]+[row for row in table[1:] if row[0] in target_rows]
-                    else:
-                        return [table[0]]+[row for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)]
-                else:
-                    return [table[0]]+[row for row in table[1:] if self.map_func[symbol](row[self.map_col[tablename][k]],v)]
+            return self.filter_or(tablename,table,parsed_lm)
 
     def project(self,table_name,table,query):
         projected = []
@@ -170,7 +212,7 @@ class Solution:
             key = tuple(k)
             if key in dict:
                 count[key] += 1
-                dict[key] += int(table[row][self.map_col[table_name][first]])
+                dict[key] += float(table[row][self.map_col[table_name][first]])
         header=[[0]+query[1:]+['avg_'+first]]
         table, row_idx = header, 1
         for key in dict:
@@ -214,13 +256,12 @@ class Solution:
     def parse_join2(self,expr):
         expr_parse=list(filter(None, re.split("(\+)|(-)|(\*)|(/)", expr)))
         if len(expr_parse)>1:
-            attr,symbol,num=expr_parse[0],expr_parse[1],int(expr_parse[2])
+            attr,symbol,num=expr_parse[0],expr_parse[1],float(expr_parse[2])
         else:
             attr,symbol,num=expr_parse[0],'$',0
         return attr,symbol,num
 
     def join(self,tablename1,table1,tablename2,table2,query):
-        map_ops={'$': lambda x,y: x,'+': lambda x,y:x+y,'-':lambda x,y:x-y,'*':lambda x,y:x*y,'/':lambda x,y:x/y}
         parsed_q=self.parse_join(tablename1,tablename2,query)
         expr1,expr2,symbol=parsed_q[0][0],parsed_q[0][1],parsed_q[0][2]
         attr1,inner_symbol1,num1=self.parse_join2(expr1)
@@ -232,7 +273,7 @@ class Solution:
         if index1_status and index2_status:
             for key1 in index1_status.keys():
                 for key2 in index2_status.keys():
-                    if self.map_func[symbol](map_ops[inner_symbol1](key1,num1),map_ops[inner_symbol2](key2,num2)):
+                    if self.map_func[symbol](self.map_ops[inner_symbol1](key1,num1),self.map_ops[inner_symbol2](key2,num2)):
                         for idx1 in index1_status[key1]:
                             for idx2 in index2_status[key2]:
                                 joined.append([row_idx]+table1[idx1][1:]+table2[idx2][1:])
@@ -240,21 +281,21 @@ class Solution:
         elif index1_status and not index2_status:
             for key1 in index1_status.keys():
                 for row2 in table2[1:]:
-                    if self.map_func[symbol](map_ops[inner_symbol1](key1,num1),map_ops[inner_symbol2](row2[self.map_col[tablename2][attr2]],num2)):
+                    if self.map_func[symbol](self.map_ops[inner_symbol1](key1,num1),self.map_ops[inner_symbol2](row2[self.map_col[tablename2][attr2]],num2)):
                         for idx1 in index1_status[key1]:
                             joined.append([row_idx]+table1[idx1][1:]+row2[1:])
                             row_idx+=1
         elif not index1_status and index2_status:
             for key2 in index2_status.keys():
                 for row1 in table1[1:]:
-                    if self.map_func[symbol](map_ops[inner_symbol1](row1[self.map_col[tablename1][attr1]],num1),map_ops[inner_symbol2](key2,num2)):
+                    if self.map_func[symbol](self.map_ops[inner_symbol1](row1[self.map_col[tablename1][attr1]],num1),self.map_ops[inner_symbol2](key2,num2)):
                         for idx2 in index2_status[key2]:
                             joined.append([row_idx]+row1[1:]+table2[idx2][1:])
                             row_idx+=1
         else:
             for row1 in table1[1:]:
                 for row2 in table2[1:]:
-                    if self.map_func[symbol](map_ops[inner_symbol1](row1[self.map_col[tablename1][attr1]],num1),map_ops[inner_symbol2](row2[self.map_col[tablename2][attr2]],num2)):
+                    if self.map_func[symbol](self.map_ops[inner_symbol1](row1[self.map_col[tablename1][attr1]],num1),self.map_ops[inner_symbol2](row2[self.map_col[tablename2][attr2]],num2)):
                         joined.append([row_idx]+row1[1:]+row2[1:])
                         row_idx+=1
         temp={name:i+1 for i, name in enumerate(joined[0][1:])}
@@ -264,7 +305,7 @@ class Solution:
             attr2,inner_symbol2,num2 = self.parse_join2(expr2)
             attr1,attr2=tablename1+'_'+attr1,tablename2+'_'+attr2
             for data in joined[1:]:
-                if self.map_func[symbol](map_ops[inner_symbol1](data[temp[attr1]],num1),map_ops[inner_symbol2](data[temp[attr2]],num2)):
+                if self.map_func[symbol](self.map_ops[inner_symbol1](data[temp[attr1]],num1),self.map_ops[inner_symbol2](data[temp[attr2]],num2)):
                     new_joined.append(data)
             joined=new_joined
         return joined
