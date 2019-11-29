@@ -1,3 +1,3 @@
 R := inputfromfile(sales1)
 S := inputfromfile(sales2)
-R1 := select(R,  (20>qty+10)) 
+R2 := select(R,  (time = 49.0)) 

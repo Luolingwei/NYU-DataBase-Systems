@@ -62,7 +62,11 @@ class Solution:
         if len(expr_parse) > 1:
             attr,symbol,num = expr_parse[0], expr_parse[1], float(expr_parse[2])
         else:
-            attr,symbol,num = float(expr_parse[0]) if expr_parse[0].isdigit() else expr_parse[0], '$', 0
+            try:
+                attr=float(expr_parse[0])
+            except:
+                attr=expr_parse[0]
+            symbol,num = '$', 0
         return attr,symbol,num
 
     def filter_and(self,tablename,table,parsed_lm):
@@ -360,9 +364,9 @@ class Solution:
             elif func=='select':
                 self.tables[returnTable]=self.select(paras[2],self.tables[paras[2]],paras[3:])
                 self.map_col[returnTable]={name:i+1 for i, name in enumerate(self.tables[returnTable][0][1:])}
-                # select=self.tables[returnTable]
-                # test_select=pd.DataFrame(data=select)
-                # test_select.to_csv('C:/Users/asus/Desktop/test_select.csv',index=False)
+                select=self.tables[returnTable]
+                test_select=pd.DataFrame(data=select)
+                test_select.to_csv('C:/Users/asus/Desktop/test_select.csv',index=False)
             elif func=='project':
                 self.tables[returnTable]=self.project(paras[2],self.tables[paras[2]],paras[3:])
                 self.map_col[returnTable]={name:i+1 for i, name in enumerate(self.tables[returnTable][0][1:])}
