@@ -1,9 +1,8 @@
 from collections import defaultdict
 import re
 from BTrees.OOBTree import OOBTree
-import numpy as np
-import pandas as pd
 import time
+import numpy as np
 
 class Solution:
     def __init__(self):
@@ -172,7 +171,6 @@ class Solution:
             for var in query[1:]:
                 comb.append(table[row][self.map_col[table_name][var]])
             keys.append(comb)
-        keys=np.array(list(set([tuple(t) for t in keys])))
         dict={}
         for i in range(len(keys)):
             dict[tuple(keys[i])]=0
@@ -181,17 +179,22 @@ class Solution:
             for var in query[1:]:
                 k.append(table[row][self.map_col[table_name][var]])
             key = tuple(k)
-            if key in dict:
-                dict[key]+=table[row][self.map_col[table_name][first]]
+            if key in dict.keys():
+                dict[key] += table[row][self.map_col[table_name][first]]
         header=[[0]+query[1:]+['sum_'+first]]
         table,row_idx=header,1
+
         for key in dict:
             row=[]
             for k in key:
                 row.append(k)
-            row.append(dict.get(key))
+            row.append(dict[key])
             table.append([row_idx]+row)
             row_idx+=1
+
+        # res = sorted(table[1:][:], key = (lambda x: x[1]))
+        # print (res)
+
         return table
 
     def avggroup(self,table_name,table,query):
@@ -203,7 +206,7 @@ class Solution:
             for var in query[1:]:
                 comb.append(table[row][self.map_col[table_name][var]])
             keys.append(comb)
-        keys = np.array(list(set([tuple(t) for t in keys])))
+
         dict = {}
         count = {}
         for i in range(len(keys)):
@@ -421,13 +424,13 @@ class Solution:
                 # concat=self.tables[returnTable]
                 # test_concat=pd.DataFrame(data=concat)
                 # test_concat.to_csv('C:/Users/asus/Desktop/test_concat.csv',index=False)
-            elif paras[0]=='outputfile':
+            elif paras[0]=='outputtofile':
                 oper = paras[0]
                 self.outputfile(self.tables[paras[1]],paras[2])
             elif paras[0]=='Hash':
                 oper = paras[0]
                 self.Hash(paras[1],self.tables[paras[1]],paras[2])
-            elif paras[0]=='BTree':
+            elif paras[0]=='Btree':
                 oper = paras[0]
                 self.BTree(paras[1],self.tables[paras[1]],paras[2])
             end=time.perf_counter()
