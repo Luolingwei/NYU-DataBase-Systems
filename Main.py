@@ -3,6 +3,7 @@ import re
 from BTrees.OOBTree import OOBTree
 import time
 import numpy as np
+import copy
 
 class Solution:
     def __init__(self):
@@ -77,19 +78,19 @@ class Solution:
                 if parsed_k in self.HashTable[tablename]:
                     for value in self.HashTable[tablename][parsed_k]:
                         if self.map_func[symbol](self.map_ops[symbol_k](value,num_k),parsed_v):
-                            equal_rows.append(self.HashTable[parsed_k][tablename][value])
+                            equal_rows.append(self.HashTable[tablename][parsed_k][value])
                 elif parsed_k in self.BTreeTbale[tablename]:
                     for value in self.BTreeTbale[tablename][parsed_k]:
                         if self.map_func[symbol](self.map_ops[symbol_k](value,num_k),parsed_v):
-                            equal_rows.append(self.BTreeTbale[parsed_k][tablename][value])
+                            equal_rows.append(self.BTreeTbale[tablename][parsed_k][value])
                 elif parsed_v in self.HashTable[tablename]:
                     for value in self.HashTable[tablename][parsed_v]:
                         if self.map_func[symbol](parsed_k,self.map_ops[symbol_v](value,num_v)):
-                            equal_rows.append(self.HashTable[parsed_v][tablename][value])
+                            equal_rows.append(self.HashTable[tablename][parsed_v][value])
                 elif parsed_v in self.BTreeTbale[tablename]:
-                    for value in self.BTreeTbale[parsed_v][tablename]:
+                    for value in self.BTreeTbale[tablename][parsed_v]:
                         if self.map_func[symbol](parsed_k,self.map_ops[symbol_v](value,num_v)):
-                            equal_rows.append(self.BTreeTbale[parsed_v][tablename][value])
+                            equal_rows.append(self.BTreeTbale[tablename][parsed_v][value])
                 else:
                     if isinstance(parsed_v,float):
                         table=[table[0]]+[row for row in table[1:] if self.map_func[symbol](self.map_ops[symbol_k](row[self.map_col[tablename][parsed_k]],num_k),parsed_v)]
@@ -115,19 +116,19 @@ class Solution:
                 if parsed_k in self.HashTable[tablename]:
                     for value in self.HashTable[tablename][parsed_k]:
                         if self.map_func[symbol](self.map_ops[symbol_k](value,num_k),parsed_v):
-                            rows|=self.HashTable[parsed_k][tablename][value]
+                            rows|=self.HashTable[tablename][parsed_k][value]
                 elif parsed_k in self.BTreeTbale[tablename]:
                     for value in self.BTreeTbale[tablename][parsed_k]:
                         if self.map_func[symbol](self.map_ops[symbol_k](value,num_k),parsed_v):
-                            rows|=self.BTreeTbale[parsed_k][tablename][value]
+                            rows|=self.BTreeTbale[tablename][parsed_k][value]
                 elif parsed_v in self.HashTable[tablename]:
                     for value in self.HashTable[tablename][parsed_v]:
                         if self.map_func[symbol](parsed_k,self.map_ops[symbol_v](value,num_v)):
-                            rows|self.HashTable[parsed_v][tablename][value]
+                            rows|self.HashTable[tablename][parsed_v][value]
                 elif parsed_v in self.BTreeTbale[tablename]:
-                    for value in self.BTreeTbale[parsed_v][tablename]:
+                    for value in self.BTreeTbale[tablename][parsed_v]:
                         if self.map_func[symbol](parsed_k,self.map_ops[symbol_v](value,num_v)):
-                            rows|=self.BTreeTbale[parsed_v][tablename][value]
+                            rows|=self.BTreeTbale[tablename][parsed_v][value]
                 else:
                     if isinstance(parsed_v, float):
                         rows|=set([row[0] for row in table[1:] if self.map_func[symbol](self.map_ops[symbol_k](row[self.map_col[tablename][parsed_k]], num_k), parsed_v)])
@@ -191,9 +192,6 @@ class Solution:
             row.append(dict[key])
             table.append([row_idx]+row)
             row_idx+=1
-
-        # res = sorted(table[1:][:], key = (lambda x: x[1]))
-        # print (res)
 
         return table
 
@@ -324,24 +322,26 @@ class Solution:
         return [header]+data
 
     def movavg(self,tablename,table,query):
+        curtable=copy.deepcopy(table)
         col,avg_para=query[0],int(query[1])
-        output=[[0,'movavg'+'_'+query[0]+'_'+query[1]]]
+        curtable[0].append('movavg'+'_'+query[0]+'_'+query[1])
         col_num=self.map_col[tablename][col]
-        data=[row[col_num] for row in table[1:]]
+        data=[row[col_num] for row in curtable[1:]]
         for i in range(len(data)):
             curdata=data[max(0,i+1-avg_para):i+1]
             curavg=sum(curdata)/len(curdata)
-            output.append([i+1,curavg])
-        return output
+            curtable[i+1].append(curavg)
+        return curtable
 
     def movsum(self,tablename,table,query):
+        curtable=copy.deepcopy(table)
         col,sum_para=query[0],int(query[1])
-        output=[[0,'movsum'+'_'+query[0]+'_'+query[1]]]
+        curtable[0].append('movsum'+'_'+query[0]+'_'+query[1])
         col_num=self.map_col[tablename][col]
-        data=[row[col_num] for row in table[1:]]
+        data=[row[col_num] for row in curtable[1:]]
         for i in range(len(data)):
-            output.append([i+1,sum(data[max(0,i+1-sum_para):i+1])])
-        return output
+            curtable[i+1].append(sum(data[max(0,i+1-sum_para):i+1]))
+        return curtable
 
     def concat(self,table1,table2):
         return table1+table2[1:]
