@@ -229,6 +229,37 @@ class Solution:
             row_idx+=1
         return table
 
+    def countgroup(self,table_name,table,query):
+        keys=[]
+        #find all the key combinations
+        for row in range(1,len(table)):
+            comb=[]
+            for var in query:
+                comb.append(table[row][self.map_col[table_name][var]])
+            keys.append(comb)
+        dict={}
+        for i in range(len(keys)):
+            dict[tuple(keys[i])]=0
+        for row in range(1, len(table)):
+            k=[]
+            for var in query:
+                k.append(table[row][self.map_col[table_name][var]])
+            key = tuple(k)
+            if key in dict.keys():
+                dict[key] += 1
+        header=[[0]+query+['count']]
+        table,row_idx=header,1
+
+        for key in dict:
+            row=[]
+            for k in key:
+                row.append(k)
+            row.append(dict[key])
+            table.append([row_idx]+row)
+            row_idx+=1
+
+        return table
+
     def parse_join(self,tablename1,tablename2,query):
         def parse_helper(attr1,symbol,attr2):
             if attr1.split('.')[0]==tablename1:
@@ -394,6 +425,9 @@ class Solution:
                 # avggroup=self.tables[returnTable]
                 # test_avggroup=pd.DataFrame(data=avggroup)
                 # test_avggroup.to_csv('C:/Users/asus/Desktop/test_avggroup.csv',index=False)
+            elif func=='countgroup':
+                self.tables[returnTable]=self.countgroup(paras[2],self.tables[paras[2]], paras[3:])
+                self.map_col[returnTable]={name:i+1 for i, name in enumerate(self.tables[returnTable][0][1:])}
             elif func=='join':
                 self.tables[returnTable]=self.join(paras[2],self.tables[paras[2]],paras[3],self.tables[paras[3]],paras[4:])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
