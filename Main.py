@@ -14,6 +14,8 @@ class Solution:
         self.map_col=defaultdict(dict)
         self.tables={}
 
+    #command example: R := inputfromfile(sales1)
+    #inputfromfile function is used to accpet file and transfer it into table in list
     def inputfromfile(self,filename):
         raw,currow=[],0
         f=open(filename,"r")
@@ -149,6 +151,10 @@ class Solution:
             parsed_lm=self.parse_select(query)
             return self.filter_or(tablename,table,parsed_lm)
 
+    #command example: R2 := project(R1, saleid, qty, pricerange)
+    #the function is used to select target columns from table
+    #table_name is the new table after operation, table is the operated table and query, query includes the column name
+    #the output will be table with header and target columns, and the resulting table will be stored in global variable tables
     def project(self,table_name,table,query):
         projected = []
         projected.append([row[0] for row in table])
@@ -157,12 +163,20 @@ class Solution:
         projected = [[row[col] for row in projected] for col in range(len(projected[0]))]
         return projected
 
+    #command example: R3 := avg(R1, qty)
+    #the function is used to calculate the average of certain column in table
+    #the input for the function includes new table_name, original table and column name
+    #the output will be header of column and average of target attribute in floar format
     def avg(self,table_name,table,query):
         res=[[0,"AVG_"+query[0]]]
         data=[row[self.map_col[table_name][query[0]]] for row in table[1:]]
         res.append([1,sum(data)/len(data)])
         return res
 
+    #command example: R4 := sumgroup(R1, time, qty)
+    #the function is used to calculate the sum of certain attribute in group of other selected attributes
+    #it accept new table_name, original table, query includes one attribute used to get sum and one or more attributes used to divide group
+    #the output will be a new table with different group and corresponding sum
     def sumgroup(self,table_name,table,query):
         first=query[0]
         keys=[]
@@ -173,6 +187,7 @@ class Solution:
                 comb.append(table[row][self.map_col[table_name][var]])
             keys.append(comb)
         dict={}
+        #initialization
         for i in range(len(keys)):
             dict[tuple(keys[i])]=0
         for row in range(1, len(table)):
@@ -180,11 +195,12 @@ class Solution:
             for var in query[1:]:
                 k.append(table[row][self.map_col[table_name][var]])
             key = tuple(k)
+            #update sum by group
             if key in dict.keys():
                 dict[key] += table[row][self.map_col[table_name][first]]
         header=[[0]+query[1:]+['sum_'+first]]
         table,row_idx=header,1
-
+        #build resulting table
         for key in dict:
             row=[]
             for k in key:
@@ -195,6 +211,10 @@ class Solution:
 
         return table
 
+    # command example: R6 := avggroup(R1, qty, pricerange)
+    # the function is used to calculate the average of certain attribute in group of other selected attributes
+    # it accept new table_name, original table, query includes one attribute used to get average and one or more attributes used to divide group
+    # the output will be a new table with different group and corresponding average
     def avggroup(self,table_name,table,query):
         first = query[0]
         keys = []
@@ -204,8 +224,9 @@ class Solution:
             for var in query[1:]:
                 comb.append(table[row][self.map_col[table_name][var]])
             keys.append(comb)
-
+        #find the sum
         dict = {}
+        #find the number
         count = {}
         for i in range(len(keys)):
             dict[tuple(keys[i])] = 0
@@ -224,11 +245,16 @@ class Solution:
             row = []
             for k in key:
                 row.append(k)
+            #avg=sum/num
             row.append(dict.get(key)/count.get(key))
             table.append([row_idx]+row)
             row_idx+=1
         return table
 
+    # command example: R8 := countgroup(R1, qty)
+    # the function is used to count the number of certain attributes by group
+    # it accept new table_name, original table, query includes one or more attributes providing combination key
+    # the output will be a new table with header and the numbe of rows in different groups
     def countgroup(self,table_name,table,query):
         keys=[]
         #find all the key combinations
@@ -245,6 +271,7 @@ class Solution:
             for var in query:
                 k.append(table[row][self.map_col[table_name][var]])
             key = tuple(k)
+            #count number of rows
             if key in dict.keys():
                 dict[key] += 1
         header=[[0]+query+['count']]
@@ -346,6 +373,7 @@ class Solution:
             joined=new_joined
         return joined
 
+
     def sort(self,tablename,table,query):
         header,data=table[0],table[1:]
         for col in query[::-1]:
@@ -377,12 +405,18 @@ class Solution:
     def concat(self,table1,table2):
         return table1+table2[1:]
 
+    #command example:outputtofile(Q5, Q5)
+    #used to reach table in tables list from program and output it into txt file
+    #it accepts the table created before and defines the name of output file
+    #the output will be a txt file containing table, each attribute in the table is divided by "|"
     def outputfile(self,table,filename):
         tablefile=open(filename+'.txt','w')
         for row in table:
             tablefile.write('|'.join(map(str,row[1:]))+'\n')
         tablefile.close()
 
+    #the function is used to read form test file, it extracts commands seperately
+    #once the command is matched with function name, the corresponding operation will be made
     def ReadFromInput(self,testfile):
         f=open(testfile,"r")
         for strs in f.readlines():
