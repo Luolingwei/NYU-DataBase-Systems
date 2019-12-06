@@ -6,6 +6,7 @@ import numpy as np
 import copy
 
 class Solution:
+    # this is the __init__ function in python, we define our global variables here.
     def __init__(self):
         self.HashTable=defaultdict(lambda:defaultdict(lambda:defaultdict(set)))
         self.BTreeTbale=defaultdict(lambda:defaultdict(lambda:OOBTree()))
@@ -14,8 +15,8 @@ class Solution:
         self.map_col=defaultdict(dict)
         self.tables={}
 
-    #command example: R := inputfromfile(sales1)
-    #inputfromfile function is used to accpet file and transfer it into table in list
+    # command example: R := inputfromfile(sales1)
+    # inputfromfile function is used to accpet file and transfer it into table in list
     def inputfromfile(self,filename):
         raw,currow=[],0
         f=open(filename,"r")
@@ -26,6 +27,10 @@ class Solution:
             currow+=1
         return raw
 
+    # command example: Hash (S, Q)
+    # this is the fuction used to hash a attribute if a table.
+    # tablename is name of opreated table,table is data of opreated table, column is the name of column which we hash.
+    # there is no output, the corresponding attribute will be hashed and stored in self.HashTable
     def Hash(self,tablename,table,column):
         curHash=defaultdict(set)
         col=self.map_col[tablename][column]
@@ -33,6 +38,10 @@ class Solution:
             curHash[data[col]].add(data[0])
         self.HashTable[tablename][column]=curHash
 
+    # command example: Btree (R, qty)
+    # this is the fuction used to Btree a attribute if a table.
+    # tablename is name of opreated table,table is data of opreated table, column is the name of column which we Btree.
+    # there is no output, the corresponding Btree attribute will be stored in self.BTreeTbale
     def BTree(self,tablename,table,column):
         curBTree=OOBTree()
         col=self.map_col[tablename][column]
@@ -44,6 +53,9 @@ class Solution:
                 curBTree[d]={data[0]}
         self.BTreeTbale[tablename][column]=curBTree
 
+    # parse_select is a helper function for select, which tranform the select condition into individual several conditions. exp:  ((time > 50) or (qty < 30))=> [(time,50,>),(qty,30,<)]
+    # query is the input condition in form of string
+    # the output will be all individual condition stored in list. exp: [(time,50,>),(qty,30,<)]
     def parse_select(self,query):
         parsed_q=[]
         pairs,idx,symbol=["",""],0,None
@@ -59,6 +71,9 @@ class Solution:
         parsed_q.append((pairs[0],pairs[1],symbol))
         return parsed_q
 
+    # parse_select2 is a helper function for select, which deal with the Operation in single condition. exp: 10+time, time/3
+    # expr is individual condition
+    # the output will be splited indidual condition in form of tuple, exp: (time,+,10), if there is no operation (only time), output will be (time,$,0)
     def parse_select2(self,expr):
         expr_parse = list(filter(None, re.split("(\+)|(-)|(\*)|(/)", expr)))
         if len(expr_parse) > 1:
@@ -71,6 +86,9 @@ class Solution:
             symbol,num = '$', 0
         return attr,symbol,num
 
+    # filter_and is a helper function for select, which deal with condition of and in select
+    # tablename is name of operated table, table is the operated table, parsed_lm is all conditions needed in select
+    # the output will be all rows which mathch the conditions in select, stored in form of table
     def filter_and(self,tablename,table,parsed_lm):
         equal_rows=[]
         for k,v,symbol in parsed_lm:
@@ -109,6 +127,9 @@ class Solution:
         else:
             return table
 
+    # filter_or is a helper function for select, which deal with condition of or in select
+    # tablename is name of operated table, table is the operated table, parsed_lm is all conditions needed in select
+    # the output will be all rows which mathch the conditions in select, stored in form of table
     def filter_or(self,tablename,table,parsed_lm):
         rows=set()
         for k,v,symbol in parsed_lm:
@@ -143,6 +164,10 @@ class Solution:
                     rows|=set([row[0] for row in table[1:] if self.map_func[symbol](parsed_k, self.map_ops[symbol_v](row[self.map_col[tablename][parsed_v]], num_v))])
         return [table[0]]+[r for r in table if r[0] in rows]
 
+    # command example: R1 := select(R, (time > 50) or (qty < 30))
+    # the function is used to select target rowss which match the query from table
+    # tablename is name of operated table, table is the operated table query includes the query conditions
+    # the output will be table with header and valid rows , and the resulting table will be stored in global variable self.tables
     def select(self,tablename,table,query):
         if 'and' in query:
             parsed_lm=self.parse_select(query)
@@ -151,10 +176,10 @@ class Solution:
             parsed_lm=self.parse_select(query)
             return self.filter_or(tablename,table,parsed_lm)
 
-    #command example: R2 := project(R1, saleid, qty, pricerange)
-    #the function is used to select target columns from table
-    #table_name is the new table after operation, table is the operated table and query, query includes the column name
-    #the output will be table with header and target columns, and the resulting table will be stored in global variable tables
+    # command example: R2 := project(R1, saleid, qty, pricerange)
+    # the function is used to select target columns from table
+    # table_name is name of operated table, table is the operated table and query, query includes the column name
+    # the output will be table with header and target columns, and the resulting table will be stored in global variable self.tables
     def project(self,table_name,table,query):
         projected = []
         projected.append([row[0] for row in table])
@@ -163,20 +188,29 @@ class Solution:
         projected = [[row[col] for row in projected] for col in range(len(projected[0]))]
         return projected
 
-    #command example: R3 := avg(R1, qty)
-    #the function is used to calculate the average of certain column in table
-    #the input for the function includes new table_name, original table and column name
-    #the output will be header of column and average of target attribute in floar format
+    # command example: R3 := avg(R1, qty)
+    # the function is used to calculate the average of certain column in table
+    # the input for the function includes operated table_name, table and column name
+    # the output will be header of column and average of target attribute in floar format
     def avg(self,table_name,table,query):
         res=[[0,"AVG_"+query[0]]]
         data=[row[self.map_col[table_name][query[0]]] for row in table[1:]]
         res.append([1,sum(data)/len(data)])
         return res
 
-    #command example: R4 := sumgroup(R1, time, qty)
-    #the function is used to calculate the sum of certain attribute in group of other selected attributes
-    #it accept new table_name, original table, query includes one attribute used to get sum and one or more attributes used to divide group
-    #the output will be a new table with different group and corresponding sum
+    # command example: R3 := count(R1)
+    # the function is used to calculate the number of rows in a table
+    # the input for the function includes operated table_name and table
+    # the output will be header of column and count of rows in a table
+    def count(self,table_name,table):
+        res=[[0,"COUNT_"+table_name]]
+        res.append([1,len(table)-1])
+        return res
+
+    # command example: R4 := sumgroup(R1, time, qty)
+    # the function is used to calculate the sum of certain attribute in group of other selected attributes
+    # it accept new table_name, original table, query includes one attribute used to get sum and one or more attributes used to divide group
+    # the output will be a new table with different group and corresponding sum
     def sumgroup(self,table_name,table,query):
         first=query[0]
         keys=[]
@@ -287,6 +321,9 @@ class Solution:
 
         return table
 
+    # parse_join is a helper function for join, which tranform the join condition into individual several conditions. exp:  (R1.qty > S.Q) and (R1.saleid = S.saleid)=> [(qty,Q,>),(saleid,saleid,=)]
+    # tablename1,tablename2 is tablename of 2 operated tables, query is the input condition in form of string
+    # the output will be all individual condition stored in list. exp: [(qty,Q,>),(saleid,saleid,=)]
     def parse_join(self,tablename1,tablename2,query):
         def parse_helper(attr1,symbol,attr2):
             if attr1.split('.')[0]==tablename1:
@@ -316,6 +353,9 @@ class Solution:
         parsed_q.append(parse_helper(pairs[0],symbol,pairs[1]))
         return parsed_q
 
+    # parse_join2 is a helper function for select, which deal with the Operation in single condition. exp: R1.qty+10, S.Q/2
+    # expr is individual condition
+    # the output will be splited indidual condition in form of tuple, exp: (qty,+,10), if there is no operation (R1.qty), output will be (qty,$,0)
     def parse_join2(self,expr):
         expr_parse=list(filter(None, re.split("(\+)|(-)|(\*)|(/)", expr)))
         if len(expr_parse)>1:
@@ -324,6 +364,10 @@ class Solution:
             attr,symbol,num=expr_parse[0],'$',0
         return attr,symbol,num
 
+    # command example: T1 := join(R1, S, (R1.saleid = S.saleid))
+    # the function is used to calculate the join result of 2 tables.
+    # the input tablename and table are name of opreated 2 tables and data of 2 tables. query is conditions of join.
+    # the output will be the resulting table of join on 2 input tables
     def join(self,tablename1,table1,tablename2,table2,query):
         parsed_q=self.parse_join(tablename1,tablename2,query)
         expr1,expr2,symbol=parsed_q[0][0],parsed_q[0][1],parsed_q[0][2]
@@ -373,13 +417,20 @@ class Solution:
             joined=new_joined
         return joined
 
-
+    # command example: T2prime := sort(T1, R1_time, S_C)
+    # the function is used to sort table by different attributes
+    # tablename is name of opreated table,table is data of opreated table, query contains columns on which sorting based on.
+    # the output will be the resulting sorted table.
     def sort(self,tablename,table,query):
         header,data=table[0],table[1:]
         for col in query[::-1]:
             data.sort(key=lambda x:-x[self.map_col[tablename][col]])
         return [header]+data
 
+    # command example: T3 := movavg(T2prime, R1_qty, 3)
+    # the function is used to calculate moving average result of a column in table
+    # tablename is name of opreated table,table is data of opreated table, query contains the column name and average num.
+    # the output will be the original table + a moving average column.
     def movavg(self,tablename,table,query):
         curtable=copy.deepcopy(table)
         col,avg_para=query[0],int(query[1])
@@ -392,6 +443,10 @@ class Solution:
             curtable[i+1].append(curavg)
         return curtable
 
+    # command example: T4 := movsum(T2prime, R1_qty, 5)
+    # the function is used to calculate moving sum result of a column in table
+    # tablename is name of opreated table,table is data of opreated table, query contains the column name and sum num.
+    # the output will be the original table + a moving sum column.
     def movsum(self,tablename,table,query):
         curtable=copy.deepcopy(table)
         col,sum_para=query[0],int(query[1])
@@ -402,21 +457,25 @@ class Solution:
             curtable[i+1].append(sum(data[max(0,i+1-sum_para):i+1]))
         return curtable
 
+    # command example: Q5 := concat(Q4, Q2)
+    # the function is used to combine 2 tables together.
+    # table1 and table2 are data of 2 operated table.
+    # the output will be the combination of 2 input tables.
     def concat(self,table1,table2):
         return table1+table2[1:]
 
-    #command example:outputtofile(Q5, Q5)
-    #used to reach table in tables list from program and output it into txt file
-    #it accepts the table created before and defines the name of output file
-    #the output will be a txt file containing table, each attribute in the table is divided by "|"
+    # command example:outputtofile(Q5, Q5)
+    # used to reach table in tables list from program and output it into txt file
+    # it accepts the table created before and defines the name of output file
+    # the output will be a txt file containing table, each attribute in the table is divided by "|"
     def outputfile(self,table,filename):
         tablefile=open(filename+'.txt','w')
         for row in table:
             tablefile.write('|'.join(map(str,row[1:]))+'\n')
         tablefile.close()
 
-    #the function is used to read form test file, it extracts commands seperately
-    #once the command is matched with function name, the corresponding operation will be made
+    # the function is used to read form test file, it extracts commands seperately
+    # once the command is matched with function name, the corresponding operation will be made
     def ReadFromInput(self,testfile):
         f=open(testfile,"r")
         for strs in f.readlines():
@@ -447,6 +506,12 @@ class Solution:
                 # avg=self.tables[returnTable]
                 # test_avg=pd.DataFrame(data=avg)
                 # test_avg.to_csv('C:/Users/asus/Desktop/test_avg.csv',index=False)
+            elif func=='count':
+                self.tables[returnTable]=self.count(paras[2],self.tables[paras[2]])
+                self.map_col[returnTable]={name:i+1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                # count=self.tables[returnTable]
+                # test_count=pd.DataFrame(data=count)
+                # test_count.to_csv('C:/Users/asus/Desktop/test_count.csv',index=False)
             elif func=='sumgroup':
                 self.tables[returnTable]=self.sumgroup(paras[2],self.tables[paras[2]],paras[3:])
                 self.map_col[returnTable]={name:i+1 for i, name in enumerate(self.tables[returnTable][0][1:])}
