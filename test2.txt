@@ -1,5 +1,0 @@
-R := inputfromfile(sales1)
-S := inputfromfile(sales2)
-Q2 := select(R, qty = 5)
-Q4 := select(R, itemid = 7) 
-Q5 := concat(Q4, Q2) 

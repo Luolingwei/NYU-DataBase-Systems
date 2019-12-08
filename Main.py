@@ -341,19 +341,22 @@ class Solution:
                 else:
                     return (attr2.split('.')[1], attr1.split('.')[1], symbol)
 
-        parsed_q = []
+        parsed_q,equals= [],[]
         pairs, idx, symbol = ["", ""], 0, None
-        for c in query:
+        for c in query+['and']:
             if c in self.map_func.keys():
                 symbol = c
                 idx += 1
             elif c == 'and':
-                parsed_q.append(parse_helper(pairs[0], symbol, pairs[1]))
+                parse_lm=parse_helper(pairs[0], symbol, pairs[1])
+                if parse_lm[2]=='=':
+                    equals.append(parse_lm)
+                else:
+                    parsed_q.append(parse_lm)
                 pairs, idx, symbol = ["", ""], 0, None
             else:
                 pairs[idx] += c
-        parsed_q.append(parse_helper(pairs[0], symbol, pairs[1]))
-        return parsed_q
+        return equals + parsed_q
 
     # parse_join2 is a helper function for select, which deal with the Operation in single condition. exp: R1.qty+10, S.Q/2
     # expr is individual condition
@@ -390,24 +393,21 @@ class Solution:
         elif index1_status and not index2_status:
             for key1 in index1_status.keys():
                 for row2 in table2[1:]:
-                    if self.map_func[symbol](self.map_ops[inner_symbol1](key1, num1),
-                                             self.map_ops[inner_symbol2](row2[self.map_col[tablename2][attr2]], num2)):
+                    if self.map_func[symbol](self.map_ops[inner_symbol1](key1, num1),self.map_ops[inner_symbol2](row2[self.map_col[tablename2][attr2]], num2)):
                         for idx1 in index1_status[key1]:
                             joined.append([row_idx] + table1[idx1][1:] + row2[1:])
                             row_idx += 1
         elif not index1_status and index2_status:
             for key2 in index2_status.keys():
                 for row1 in table1[1:]:
-                    if self.map_func[symbol](self.map_ops[inner_symbol1](row1[self.map_col[tablename1][attr1]], num1),
-                                             self.map_ops[inner_symbol2](key2, num2)):
+                    if self.map_func[symbol](self.map_ops[inner_symbol1](row1[self.map_col[tablename1][attr1]], num1),self.map_ops[inner_symbol2](key2, num2)):
                         for idx2 in index2_status[key2]:
                             joined.append([row_idx] + row1[1:] + table2[idx2][1:])
                             row_idx += 1
         else:
             for row1 in table1[1:]:
                 for row2 in table2[1:]:
-                    if self.map_func[symbol](self.map_ops[inner_symbol1](row1[self.map_col[tablename1][attr1]], num1),
-                                             self.map_ops[inner_symbol2](row2[self.map_col[tablename2][attr2]], num2)):
+                    if self.map_func[symbol](self.map_ops[inner_symbol1](row1[self.map_col[tablename1][attr1]], num1),self.map_ops[inner_symbol2](row2[self.map_col[tablename2][attr2]], num2)):
                         joined.append([row_idx] + row1[1:] + row2[1:])
                         row_idx += 1
         temp = {name: i + 1 for i, name in enumerate(joined[0][1:])}
@@ -417,8 +417,7 @@ class Solution:
             attr2, inner_symbol2, num2 = self.parse_join2(expr2)
             attr1, attr2 = tablename1 + '_' + attr1, tablename2 + '_' + attr2
             for data in joined[1:]:
-                if self.map_func[symbol](self.map_ops[inner_symbol1](data[temp[attr1]], num1),
-                                         self.map_ops[inner_symbol2](data[temp[attr2]], num2)):
+                if self.map_func[symbol](self.map_ops[inner_symbol1](data[temp[attr1]], num1),self.map_ops[inner_symbol2](data[temp[attr2]], num2)):
                     new_joined.append(data)
             joined = new_joined
         return joined
