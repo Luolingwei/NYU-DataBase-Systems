@@ -189,12 +189,22 @@ class Solution:
         projected = [[row[col] for row in projected] for col in range(len(projected[0]))]
         return projected
 
+    # command example: R8 := sum(R1, qty)
+    # the function is used to calculate the sum of certain column in table
+    # the input for the function includes operated table_name, table and column name
+    # the output will be header of column and sum of target attribute in float format
+    def sum(self, table_name, table, query):
+        res = [[0, "SUM_" + query[0] + '_'+ table_name]]
+        data = [row[self.map_col[table_name][query[0]]] for row in table[1:]]
+        res.append([1, sum(data)])
+        return res
+
     # command example: R3 := avg(R1, qty)
     # the function is used to calculate the average of certain column in table
     # the input for the function includes operated table_name, table and column name
     # the output will be header of column and average of target attribute in floar format
     def avg(self, table_name, table, query):
-        res = [[0, "AVG_" + query[0]]]
+        res = [[0, "AVG_" + query[0] + '_'+ table_name]]
         data = [row[self.map_col[table_name][query[0]]] for row in table[1:]]
         res.append([1, sum(data) / len(data)])
         return res
@@ -474,7 +484,7 @@ class Solution:
     # it accepts the table created before and defines the name of output file
     # the output will be a txt file containing table, each attribute in the table is divided by "|"
     def outputfile(self, table, filename):
-        tablefile = open(filename + '.txt', 'w')
+        tablefile = open('ll4123_yf1357_'+ filename + '.txt', 'w')
         for row in table:
             tablefile.write('|'.join(map(str, row[1:])) + '\n')
         tablefile.close()
@@ -482,7 +492,18 @@ class Solution:
     # the function is used to read form test file, it extracts commands seperately
     # once the command is matched with function name, the corresponding operation will be made
     def ReadFromInput(self, testfile):
+
+        def writeops(returnTable,query):
+            out.write("tablename:" + returnTable + '\n')
+            out.write("operation:" + query + '\n')
+            out.write('|'.join([returnTable+'.'+col for col in self.tables[returnTable][0][1:]]) + '\n')
+            for row in self.tables[returnTable][1:]:
+                out.write('|'.join(map(str, row[1:])) + '\n')
+            out.write("------------------------------------------------------------------------" + '\n')
+            out.write("------------------------------------------------------------------------" + '\n')
+
         f = open(testfile, "r")
+        out = open("ll4123_yf1357_AllOperations"+'.txt', 'a')
         for strs in f.readlines():
             strs = strs.strip('\n')
             paras = list(filter(None, re.split(":=|\)|\(|\\s+|,|(=)|(>)|(<)|(!=)|(>=)|(<=)", strs)))
@@ -493,42 +514,59 @@ class Solution:
             if func == 'inputfromfile':
                 self.tables[returnTable] = self.inputfromfile(paras[2] + '.txt')
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                writeops(returnTable,strs)
             elif func == 'select':
                 self.tables[returnTable] = self.select(paras[2], self.tables[paras[2]], paras[3:])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                writeops(returnTable,strs)
             elif func == 'project':
                 self.tables[returnTable] = self.project(paras[2], self.tables[paras[2]], paras[3:])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                writeops(returnTable,strs)
+            elif func == 'sum':
+                self.tables[returnTable] = self.sum(paras[2], self.tables[paras[2]], paras[3:])
+                self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                writeops(returnTable,strs)
             elif func == 'avg':
                 self.tables[returnTable] = self.avg(paras[2], self.tables[paras[2]], paras[3:])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                writeops(returnTable,strs)
             elif func == 'count':
                 self.tables[returnTable] = self.count(paras[2], self.tables[paras[2]])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                writeops(returnTable,strs)
             elif func == 'sumgroup':
                 self.tables[returnTable] = self.sumgroup(paras[2], self.tables[paras[2]], paras[3:])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                writeops(returnTable,strs)
             elif func == 'avggroup':
                 self.tables[returnTable] = self.avggroup(paras[2], self.tables[paras[2]], paras[3:])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                writeops(returnTable,strs)
             elif func == 'countgroup':
                 self.tables[returnTable] = self.countgroup(paras[2], self.tables[paras[2]], paras[3:])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                writeops(returnTable,strs)
             elif func == 'join':
                 self.tables[returnTable] = self.join(paras[2], self.tables[paras[2]], paras[3], self.tables[paras[3]],paras[4:])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                writeops(returnTable,strs)
             elif func == 'sort':
                 self.tables[returnTable] = self.sort(paras[2], self.tables[paras[2]], paras[3:])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                writeops(returnTable,strs)
             elif func == 'movavg':
                 self.tables[returnTable] = self.movavg(paras[2], self.tables[paras[2]], paras[3:])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                writeops(returnTable,strs)
             elif func == 'movsum':
                 self.tables[returnTable] = self.movsum(paras[2], self.tables[paras[2]], paras[3:])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                writeops(returnTable,strs)
             elif func == 'concat':
                 self.tables[returnTable] = self.concat(self.tables[paras[2]], self.tables[paras[3]])
                 self.map_col[returnTable] = {name: i + 1 for i, name in enumerate(self.tables[returnTable][0][1:])}
+                writeops(returnTable,strs)
             elif paras[0] == 'outputtofile':
                 oper = paras[0]
                 self.outputfile(self.tables[paras[1]], paras[2])
